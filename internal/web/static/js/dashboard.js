@@ -46,9 +46,22 @@ function renderChainInfo(info) {
     var html = '';
     html += '<div class="flex justify-between"><span class="text-slate-400">Chain</span><span class="font-medium">' + (info.chain || 'N/A') + '</span></div>';
     html += '<div class="flex justify-between"><span class="text-slate-400">Height</span><span class="stat-value text-base">' + formatNumber(info.blocks) + '</span></div>';
-    html += '<div class="flex justify-between"><span class="text-slate-400">Difficulty</span><span>' + formatDifficulty(info.difficulty) + '</span></div>';
+
+    // Show per-algo difficulties if available (multi-algo coins like DGB)
+    if (info.difficulties && Object.keys(info.difficulties).length > 0) {
+        html += '<div class="mt-2"><span class="text-slate-400 text-sm">Difficulties by Algorithm</span>';
+        html += '<div class="mt-1 space-y-1">';
+        var algos = Object.keys(info.difficulties);
+        algos.forEach(function(algo) {
+            html += '<div class="flex justify-between text-sm"><span class="text-slate-500 ml-2">' + algo + '</span><span>' + formatDifficulty(info.difficulties[algo]) + '</span></div>';
+        });
+        html += '</div></div>';
+    } else {
+        html += '<div class="flex justify-between"><span class="text-slate-400">Difficulty</span><span>' + formatDifficulty(info.difficulty) + '</span></div>';
+    }
+
     html += '<div><span class="text-slate-400">Best Block</span><br><span class="hash-text clickable-hash" onclick="window.location.href=\'/block/' + info.bestblockhash + '\'">' + truncateHash(info.bestblockhash, 16) + '</span></div>';
-    if (info.warnings) {
+    if (info.warnings && info.warnings.length > 0) {
         html += '<div class="text-yellow-400 text-sm">' + info.warnings + '</div>';
     }
     document.getElementById('chain-info-content').innerHTML = html;
