@@ -30,6 +30,7 @@ docker run -d \
   --name gsbe \
   -p 3007:3007 \
   -v ./config:/app/config \
+  -v ./logs:/app/logs \
   ghcr.io/mmfpsolutions/gsbe:latest
 ```
 
@@ -46,6 +47,7 @@ services:
       - "3007:3007"
     volumes:
       - ./config:/app/config
+      - ./logs:/app/logs
     restart: unless-stopped
 ```
 
@@ -64,7 +66,7 @@ go build -o gsbe ./cmd/server
 
 ```bash
 ./build-local.sh
-docker run -d -p 3007:3007 -v ./config:/app/config gsbe:local
+docker run -d -p 3007:3007 -v ./config:/app/config -v ./logs:/app/logs gsbe:local
 ```
 
 ## Configuration
