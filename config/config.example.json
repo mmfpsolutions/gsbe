@@ -1,0 +1,29 @@
+{
+  "port": 3007,
+  "title": "Block Explorer",
+  "nodes": [
+    {
+      "id": "dgb_test",
+      "name": "DGB Testnet",
+      "symbol": "DGB",
+      "host": "127.0.0.1",
+      "port": 14022,
+      "network": "testnet",
+      "rest_enabled": true
+    },
+    {
+      "id": "btc_main",
+      "name": "BTC Mainnet",
+      "symbol": "BTC",
+      "host": "127.0.0.1",
+      "port": 8332,
+      "network": "mainnet",
+      "rest_enabled": true
+    }
+  ],
+  "logging": {
+    "level": "info",
+    "logToFile": true,
+    "logFilePath": "/app/logs/gsbe.log"
+  }
+}

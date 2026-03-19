@@ -1,0 +1,50 @@
+{{define "block-detail-content"}}
+<div id="block-detail-page" data-block-hash="{{.BlockHash}}">
+    <div class="flex items-center gap-3 mb-6">
+        <a href="/blocks" class="text-blue-400 hover:text-blue-300">&larr; Blocks</a>
+        <h1 class="text-2xl font-bold">Block Detail</h1>
+    </div>
+
+    <!-- Block Navigation -->
+    <div class="flex items-center justify-between mb-4">
+        <button id="prev-block-btn" class="refresh-btn px-3 py-1" onclick="navigateBlock('prev')" style="display:none;">
+            &larr; Previous Block
+        </button>
+        <span id="block-height-display" class="text-lg font-semibold text-amber-400"></span>
+        <button id="next-block-btn" class="refresh-btn px-3 py-1" onclick="navigateBlock('next')" style="display:none;">
+            Next Block &rarr;
+        </button>
+    </div>
+
+    <!-- Block Header Info -->
+    <div class="card p-5 mb-6">
+        <h2 class="text-lg font-semibold mb-4 text-slate-300">Block Header</h2>
+        <div id="block-header-content" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <p class="text-slate-500">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card p-5">
+        <h2 class="text-lg font-semibold mb-4 text-slate-300">
+            Transactions <span id="tx-count-badge" class="badge badge-blue"></span>
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr>
+                        <th class="text-left py-2 px-3">#</th>
+                        <th class="text-left py-2 px-3">TxID</th>
+                        <th class="text-right py-2 px-3">Inputs</th>
+                        <th class="text-right py-2 px-3">Outputs</th>
+                        <th class="text-right py-2 px-3">Size</th>
+                    </tr>
+                </thead>
+                <tbody id="tx-table-body">
+                    <tr><td colspan="5" class="py-4 text-center text-slate-500">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,8 @@
+.header-gradient { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 1px solid rgba(71, 85, 105, 0.3); }
+.loading-spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.clickable-hash { cursor: pointer; }
+.clickable-hash:hover { color: #93c5fd; text-decoration: underline; }
+.coinbase-indicator { color: #f59e0b; font-weight: 600; }
+.refresh-btn { padding: 0.25rem 0.75rem; border-radius: 0.375rem; background: rgba(59,130,246,0.15); color: #60a5fa; cursor: pointer; border: 1px solid rgba(59,130,246,0.3); }
+.refresh-btn:hover { background: rgba(59,130,246,0.25); }

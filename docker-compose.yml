@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  gsbe:
+    build: .
+    container_name: gsbe
+    ports:
+      - "3007:3007"
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped

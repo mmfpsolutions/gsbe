@@ -1,0 +1,36 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <link rel="stylesheet" href="/static/css/dark-theme.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body class="min-h-screen flex flex-col">
+    {{template "header" .}}
+
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        {{if eq .ActivePage "dashboard"}}{{template "dashboard-content" .}}{{end}}
+        {{if eq .ActivePage "blocks"}}{{template "blocks-content" .}}{{end}}
+        {{if eq .ActivePage "block-detail"}}{{template "block-detail-content" .}}{{end}}
+        {{if eq .ActivePage "tx-detail"}}{{template "tx-detail-content" .}}{{end}}
+        {{if eq .ActivePage "mempool"}}{{template "mempool-content" .}}{{end}}
+        {{if eq .ActivePage "config"}}{{template "config-content" .}}{{end}}
+    </main>
+
+    {{template "footer" .}}
+
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    {{if eq .ActivePage "dashboard"}}<script src="/static/js/dashboard.js"></script>{{end}}
+    {{if eq .ActivePage "blocks"}}<script src="/static/js/blocks.js"></script>{{end}}
+    {{if eq .ActivePage "block-detail"}}<script src="/static/js/block-detail.js"></script>{{end}}
+    {{if eq .ActivePage "tx-detail"}}<script src="/static/js/tx-detail.js"></script>{{end}}
+    {{if eq .ActivePage "mempool"}}<script src="/static/js/mempool.js"></script>{{end}}
+    {{if eq .ActivePage "config"}}<script src="/static/js/config.js"></script>{{end}}
+</body>
+</html>{{end}}

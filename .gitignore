@@ -46,5 +46,12 @@ node_modules/
 /gsbe
 /cmd/gsbe/gsbe
 
+# Config
+config/config.json
+
+# Compiled CSS
+internal/web/static/css/tailwind.css
+
 # logs
+*.log
 /logs

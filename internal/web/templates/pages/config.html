@@ -1,0 +1,67 @@
+{{define "config-content"}}
+<div id="config-page">
+    <h1 class="text-2xl font-bold mb-6">Configuration</h1>
+
+    <!-- Node List -->
+    <div class="card p-5 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-slate-300">Configured Nodes</h2>
+        </div>
+        <div id="node-list" class="space-y-3">
+            <p class="text-slate-500">No nodes configured.</p>
+        </div>
+    </div>
+
+    <!-- Add Node Form -->
+    <div class="card p-5">
+        <h2 class="text-lg font-semibold mb-4 text-slate-300" id="node-form-title">Add Node</h2>
+        <form id="node-form" onsubmit="handleNodeSubmit(event)">
+            <input type="hidden" id="node-edit-id" value="">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Name</label>
+                    <input type="text" id="node-name" class="w-full rounded px-3 py-2 text-sm" placeholder="My Bitcoin Node" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Symbol</label>
+                    <input type="text" id="node-symbol" class="w-full rounded px-3 py-2 text-sm" placeholder="BTC" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Host</label>
+                    <input type="text" id="node-host" class="w-full rounded px-3 py-2 text-sm" placeholder="127.0.0.1" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Port</label>
+                    <input type="number" id="node-port" class="w-full rounded px-3 py-2 text-sm" placeholder="8332" required>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Network</label>
+                    <select id="node-network" class="w-full rounded px-3 py-2 text-sm">
+                        <option value="mainnet">Mainnet</option>
+                        <option value="testnet">Testnet</option>
+                        <option value="regtest">Regtest</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <label class="flex items-center gap-2 text-sm text-slate-400">
+                        <input type="checkbox" id="node-rest" checked>
+                        REST API Enabled
+                    </label>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="button" class="refresh-btn px-4 py-2" onclick="testNodeConnection()">
+                    Test Connection
+                </button>
+                <button type="submit" class="px-4 py-2 rounded bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium">
+                    Save Node
+                </button>
+                <button type="button" id="cancel-edit-btn" class="px-4 py-2 rounded text-sm text-slate-400 hover:text-slate-300" onclick="cancelNodeEdit()" style="display:none;">
+                    Cancel
+                </button>
+                <span id="test-result" class="text-sm ml-2"></span>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

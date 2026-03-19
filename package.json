@@ -1,0 +1,12 @@
+{
+  "name": "gsbe",
+  "version": "0.1.0",
+  "description": "GoSlimBlockExplorer - Tailwind CSS build",
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./input.css -o ./internal/web/static/css/tailwind.css --minify",
+    "watch:css": "npx tailwindcss -i ./input.css -o ./internal/web/static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
