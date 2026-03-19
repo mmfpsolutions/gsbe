@@ -111,6 +111,22 @@ func (s *NodeService) GetBlock(nodeID, hash string) (*v1types.Block, error) {
 	return &block, nil
 }
 
+// GetBlockSummary fetches a block but only parses header fields, skipping the transaction array
+func (s *NodeService) GetBlockSummary(node *config.NodeConnection, hash string) (*BlockSummary, error) {
+	body, err := s.restGet(node, fmt.Sprintf("block/%s.json", hash))
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse only header fields — the tx array is ignored by BlockSummary struct
+	var summary BlockSummary
+	if err := json.Unmarshal(body, &summary); err != nil {
+		return nil, fmt.Errorf("failed to parse block summary: %w", err)
+	}
+
+	return &summary, nil
+}
+
 // BlockHashResponse is the response from the blockhashbyheight endpoint
 type BlockHashResponse struct {
 	BlockHash string `json:"blockhash"`
@@ -158,46 +174,42 @@ func (s *NodeService) GetMempoolInfo(nodeID string) (v1types.MempoolInfo, error)
 
 // BlockSummary is a simplified block for list views
 type BlockSummary struct {
-	Hash       string      `json:"hash"`
-	Height     int64       `json:"height"`
-	Time       int64       `json:"time"`
-	NTx        int         `json:"nTx"`
-	Size       int         `json:"size"`
-	Weight     int         `json:"weight"`
-	Difficulty interface{} `json:"difficulty"`
+	Hash              string      `json:"hash"`
+	Height            int64       `json:"height"`
+	Time              int64       `json:"time"`
+	NTx               int         `json:"nTx"`
+	Size              int         `json:"size"`
+	Weight            int         `json:"weight"`
+	Difficulty        interface{} `json:"difficulty"`
+	PowAlgo           string      `json:"pow_algo,omitempty"`
+	PreviousBlockHash string      `json:"previousblockhash"`
 }
 
-// GetRecentBlocks fetches the most recent N blocks
+// GetRecentBlocks fetches the most recent N blocks using lightweight summary parsing
 func (s *NodeService) GetRecentBlocks(nodeID string, count int) ([]BlockSummary, error) {
+	node, err := s.getNode(nodeID)
+	if err != nil {
+		return nil, err
+	}
+
 	chainInfo, err := s.GetChainInfo(nodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain info: %w", err)
 	}
 
-	currentHeight := chainInfo.Blocks
 	blocks := make([]BlockSummary, 0, count)
 
-	// Walk backwards from the tip
+	// Walk backwards from the tip using summary-only parsing
 	hash := chainInfo.BestBlockHash
 	for i := 0; i < count && hash != ""; i++ {
-		block, err := s.GetBlock(nodeID, hash)
+		summary, err := s.GetBlockSummary(node, hash)
 		if err != nil {
 			s.log.Warn("Failed to fetch block %s: %v", hash, err)
 			break
 		}
 
-		blocks = append(blocks, BlockSummary{
-			Hash:       block.Hash,
-			Height:     block.Height,
-			Time:       block.Time,
-			NTx:        block.NTx,
-			Size:       block.Size,
-			Weight:     block.Weight,
-			Difficulty: block.Difficulty,
-		})
-
-		hash = block.PreviousBlockHash
-		_ = currentHeight // used implicitly via chainInfo
+		blocks = append(blocks, *summary)
+		hash = summary.PreviousBlockHash
 	}
 
 	return blocks, nil
