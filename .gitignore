@@ -30,3 +30,21 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+# Ignore folders
+/design-documents
+/troubleshooting
+
+# Ignore files extra
+CLAUDE.md
+config.json
+
+# Node.js (Tailwind build)
+node_modules/
+.DS_Store
+
+# Built binaries
+/gsbe
+/cmd/gsbe/gsbe
+
+# logs
+/logs
