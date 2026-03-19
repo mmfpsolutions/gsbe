@@ -21,6 +21,7 @@ function formatTimestamp(unix) {
 function formatTimeAgo(unix) {
     if (!unix) return 'N/A';
     var seconds = Math.floor(Date.now() / 1000 - unix);
+    if (seconds < 0) return 'just now';
     if (seconds < 60) return seconds + 's ago';
     if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
     if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';

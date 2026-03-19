@@ -23,7 +23,7 @@
   ],
   "logging": {
     "level": "info",
-    "logToFile": true,
-    "logFilePath": "/app/logs/gsbe.log"
+    "log_to_file": true,
+    "log_file_path": "/app/logs/gsbe.log"
   }
 }
