@@ -13,71 +13,235 @@ env:
   IMAGE_NAME: mmfpsolutions/gsbe
 
 jobs:
-  build-and-push:
+  # Resolve the version and the branch-derived tags ONCE, before the
+  # per-architecture builds fan out.
+  #
+  # This used to live inside the build job. With a matrix that runs twice, and
+  # build_date coming from `date -u`, the two architectures would be stamped
+  # with DIFFERENT build dates — a manifest whose images disagree about when
+  # they were built.
+  prepare:
+    name: Resolve Version
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_date: ${{ steps.version.outputs.build_date }}
+      commit: ${{ steps.version.outputs.commit }}
+      tag_moving: ${{ steps.version.outputs.tag_moving }}
+      tag_version: ${{ steps.version.outputs.tag_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(cat VERSION 2>/dev/null || echo "0.1.0")
+          BRANCH=${GITHUB_REF#refs/heads/}
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          echo "commit=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+          # Tags are bare here — the merge job's metadata-action prefixes them
+          # with the registry and image name.
+          #
+          # tag_moving is the pointer that follows the branch (dev / stable /
+          # latest); tag_version is the immutable, version-pinned tag.
+          if [ "${BRANCH}" = "development" ]; then
+            echo "tag_moving=dev" >> $GITHUB_OUTPUT
+            echo "tag_version=dev-${VERSION}" >> $GITHUB_OUTPUT
+          elif [ "${BRANCH}" = "stable" ]; then
+            echo "tag_moving=stable" >> $GITHUB_OUTPUT
+            echo "tag_version=stable-${VERSION}" >> $GITHUB_OUTPUT
+          elif [ "${BRANCH}" = "main" ]; then
+            echo "tag_moving=latest" >> $GITHUB_OUTPUT
+            echo "tag_version=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            # Previously this fell through with TAGS unset and the push failed
+            # deep inside buildx. Fail here instead, where the reason is legible.
+            echo "::error::branch '${BRANCH}' has no tag mapping — release runs from development, stable or main"
+            exit 1
+          fi
+
+          echo "Version: ${VERSION} (branch: ${BRANCH})"
+
+  # Per-architecture build, each on a NATIVE runner.
+  #
+  # This used to be one job on ubuntu-latest emulating linux/arm64 through QEMU:
+  # the arm64 leg pulled the arm64 Go toolchain and ran `go mod download` and
+  # `go build` instruction-by-instruction under translation. GitHub's
+  # ubuntu-24.04-arm runners are real arm64 hardware, so there is nothing to
+  # emulate and the QEMU step is gone entirely.
+  #
+  # Each job pushes an untagged, digest-addressed image. Tags are applied ONCE
+  # by the merge job below — if these jobs pushed tags the two architectures
+  # would race, and whichever finished last would leave a SINGLE-ARCH image
+  # sitting under :latest.
+  build-docker:
+    name: Build ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    needs: prepare
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v6
-
-      - name: Set version and tags
-        id: meta
-        run: |
-          VERSION=$(cat VERSION 2>/dev/null || echo "0.1.0")
-          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-          COMMIT=$(git rev-parse --short HEAD)
-          BRANCH=${GITHUB_REF#refs/heads/}
-
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-          echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_OUTPUT
-          echo "COMMIT=${COMMIT}" >> $GITHUB_OUTPUT
-          echo "BRANCH=${BRANCH}" >> $GITHUB_OUTPUT
-
-          # Set tags based on branch
-          if [ "${BRANCH}" = "development" ]; then
-            echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${VERSION}" >> $GITHUB_OUTPUT
-          elif [ "${BRANCH}" = "stable" ]; then
-            echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:stable,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:stable-${VERSION}" >> $GITHUB_OUTPUT
-          elif [ "${BRANCH}" = "main" ]; then
-            echo "TAGS=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
-          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      - name: Build Tailwind CSS
+      # internal/web embeds static/* at Go build time, so the stylesheet has to
+      # exist in the working tree BEFORE docker build runs. That makes this a
+      # per-leg step — it cannot move to prepare, whose checkout is discarded.
+      - name: Compile Tailwind CSS
         run: |
           npm install
           npm run build:css
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
+          # push-by-digest publishes the layers with no tag attached. The merge
+          # job assembles the tagged manifest list from the digests.
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            org.opencontainers.image.title=GoSlimBlockExplorer
+            org.opencontainers.image.description=GoSlimBlockExplorer - Lightweight Block Explorer
+            org.opencontainers.image.vendor=MMFP Solutions
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+          # Scoped per architecture. A shared scope has the two jobs evicting
+          # each other's layers and gives back the time this change saves.
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
           build-args: |
-            VERSION=${{ steps.meta.outputs.VERSION }}
-            BUILD_DATE=${{ steps.meta.outputs.BUILD_DATE }}
-            COMMIT=${{ steps.meta.outputs.COMMIT }}
-          tags: ${{ steps.meta.outputs.TAGS }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            VERSION=${{ needs.prepare.outputs.version }}
+            BUILD_DATE=${{ needs.prepare.outputs.build_date }}
+            COMMIT=${{ needs.prepare.outputs.commit }}
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      # Matrix jobs cannot reliably expose per-job outputs, so the digests are
+      # handed to the merge job as artifacts. This is Docker's documented
+      # pattern for multi-arch builds split across runners.
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Assemble the multi-arch manifest and apply the tags. This is the only job
+  # that writes the branch tags, so what gets published always points at a
+  # manifest list containing both architectures.
+  merge:
+    name: Publish Manifest
+    runs-on: ubuntu-latest
+    needs: [prepare, build-docker]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.tag_moving }}
+            type=raw,value=${{ needs.prepare.outputs.tag_version }}
+          labels: |
+            org.opencontainers.image.title=GoSlimBlockExplorer
+            org.opencontainers.image.description=GoSlimBlockExplorer - Lightweight Block Explorer
+            org.opencontainers.image.vendor=MMFP Solutions
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+
+      - name: Verify both architectures are present
+        run: |
+          echo "Inspecting ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.tag_version }}"
+          docker buildx imagetools inspect \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.tag_version }}
+
+          # Fail loudly rather than publishing a half-populated manifest.
+          MANIFEST=$(docker buildx imagetools inspect --raw \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.tag_version }})
+          for arch in amd64 arm64; do
+            if ! jq -e --arg a "$arch" \
+              '.manifests[] | select(.platform.architecture == $a)' <<< "$MANIFEST" > /dev/null; then
+              echo "::error::manifest is missing linux/$arch"
+              exit 1
+            fi
+          done
+          echo "Both linux/amd64 and linux/arm64 present."
+
+      - name: Build Summary
+        run: |
+          echo "Successfully built and pushed multi-arch Docker images!"
+          echo ""
+          echo "Version: ${{ needs.prepare.outputs.version }}"
+          echo "Build Date: ${{ needs.prepare.outputs.build_date }}"
+          echo "Commit: ${{ needs.prepare.outputs.commit }}"
+          echo ""
+          echo "Built natively: amd64 on ubuntu-latest, arm64 on ubuntu-24.04-arm (no QEMU)"
+          echo ""
+          echo "Tags pushed:"
+          echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | sed 's/^/   - /'
