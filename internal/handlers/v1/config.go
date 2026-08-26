@@ -38,8 +38,8 @@ func HandleUpdateConfig(cfgManager *config.Manager) http.HandlerFunc {
 		start := time.Now()
 
 		var updates struct {
-			Port    *int                `json:"port,omitempty"`
-			Title   *string             `json:"title,omitempty"`
+			Port    *int                  `json:"port,omitempty"`
+			Title   *string               `json:"title,omitempty"`
 			Logging *config.LoggingConfig `json:"logging,omitempty"`
 		}
 
