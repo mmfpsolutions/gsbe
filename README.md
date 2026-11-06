@@ -155,8 +155,9 @@ Works on mainnet, testnet, and regtest networks.
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE). Releases before 0.1.4 were published under GPLv3. The MMFP
+Solutions name and logo are not covered by the license.
 
 ## Credits
 
-Built by [MMFP Solutions](https://mmfpsolutions.io)
+Built by [MMFP Solutions](https://www.mmfpsolutions.io)

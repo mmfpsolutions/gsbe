@@ -1,3 +1,9 @@
+/*
+ * Copyright 2026 Scott Walter, MMFP Solutions LLC
+ *
+ * Licensed under the MIT License. See LICENSE for details.
+ */
+
 var blocksData = [];
 var blocksCount = 20;
 

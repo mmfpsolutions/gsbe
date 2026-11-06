@@ -1,3 +1,9 @@
+/*
+ * Copyright 2026 Scott Walter, MMFP Solutions LLC
+ *
+ * Licensed under the MIT License. See LICENSE for details.
+ */
+
 function getSelectedNode() {
     return localStorage.getItem('gsbe_selected_node') || '';
 }
